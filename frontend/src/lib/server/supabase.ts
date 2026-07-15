@@ -4,7 +4,10 @@ import { createClient } from '@supabase/supabase-js';
 
 export function createServerSupabaseClient() {
 	const url = privateEnv.SUPABASE_URL ?? publicEnv.PUBLIC_SUPABASE_URL;
-	const key = privateEnv.SUPABASE_ANON_KEY ?? publicEnv.PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+	const key =
+		privateEnv.SUPABASE_PUBLISHABLE_KEY ??
+		privateEnv.SUPABASE_ANON_KEY ??
+		publicEnv.PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
 	if (!url || !key) {
 		return null;

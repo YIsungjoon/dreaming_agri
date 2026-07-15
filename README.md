@@ -30,7 +30,7 @@ npm run dev:backend
 
 프런트엔드는 `http://localhost:5173`, Supabase Studio는 `http://localhost:54323`에서 확인합니다. `npm run dev:backend`가 출력하는 로컬 URL과 publishable key를 `frontend/.env.example`을 참고해 `frontend/.env`에 설정합니다.
 
-Vercel의 Supabase Integration을 사용하는 경우 `frontend`에서 `npx vercel link`와 `npx vercel env pull .env.development.local`을 실행하면 서버 전용 `SUPABASE_URL`, `SUPABASE_ANON_KEY`를 사용할 수 있습니다.
+Vercel의 Supabase Integration을 사용하는 경우 `frontend`에서 `npx vercel link`와 `npx vercel env pull .env.development.local`을 실행하면 서버 전용 `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`를 사용할 수 있습니다.
 
 ## 배포 경계
 
