@@ -39,4 +39,7 @@ Vercel의 Supabase Integration을 사용하는 경우 `frontend`에서 `npx verc
 - 브라우저에는 Supabase publishable key만 노출합니다. secret/service-role key와 AI 제공자 키는 서버 전용 환경변수로 관리합니다.
 - AI 실행 환경은 모델과 처리시간이 정해진 뒤 선택합니다. 프런트엔드가 AI 제공자를 직접 호출하지 않도록 유지합니다.
 
-세부 책임과 MVP 데이터 흐름은 [docs/architecture.md](docs/architecture.md)를 참고하세요.
+문서:
+
+- [초기 설정 작업 기록](docs/initial-setup.md)
+- [아키텍처와 MVP 데이터 흐름](docs/architecture.md)
