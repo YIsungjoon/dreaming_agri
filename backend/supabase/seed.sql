@@ -1,0 +1,1 @@
+-- Reproducible MVP seed data will be added after the first schema migration.

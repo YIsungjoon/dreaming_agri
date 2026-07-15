@@ -1,0 +1,17 @@
+{
+	"name": "@dreaming-agri/backend",
+	"private": true,
+	"version": "0.1.0",
+	"scripts": {
+		"dev": "supabase start",
+		"stop": "supabase stop",
+		"status": "supabase status",
+		"db:reset": "supabase db reset",
+		"db:new": "supabase migration new",
+		"db:push": "supabase db push",
+		"types": "supabase gen types typescript --local"
+	},
+	"devDependencies": {
+		"supabase": "^2.109.1"
+	}
+}
