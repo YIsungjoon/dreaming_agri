@@ -36,7 +36,7 @@
 </svelte:head>
 
 <main>
-	<header class="hero">
+	<header id="overview" class="hero">
 		<div class="eyebrow"><span></span> 가상데이터 기반 MVP</div>
 		<h1>농장 데이터를<br /><strong>다음 작업</strong>으로 연결합니다.</h1>
 		<p>
@@ -45,7 +45,7 @@
 		</p>
 	</header>
 
-	<section class="flow" aria-labelledby="flow-title">
+	<section id="flow" class="flow" aria-labelledby="flow-title">
 		<div class="section-heading">
 			<p>PRODUCT FLOW</p>
 			<h2 id="flow-title">데이터에서 실행까지</h2>
@@ -75,7 +75,7 @@
 		</div>
 	</section>
 
-	<section class="systems" aria-label="시스템 구성">
+	<section id="systems" class="systems" aria-label="시스템 구성">
 		<article>
 			<p>FRONTEND</p>
 			<h2>Svelte 5</h2>
@@ -93,7 +93,7 @@
 		</article>
 	</section>
 
-	<section class="database" aria-labelledby="database-title">
+	<section id="weather" class="database" aria-labelledby="database-title">
 		<div>
 			<p class="database-label">VIRTUAL FARM WEATHER</p>
 			<h2 id="database-title">{data.farm?.name ?? '김제 가상농장'}</h2>
@@ -150,6 +150,13 @@
 		width: min(1160px, calc(100% - 40px));
 		margin: 0 auto;
 		padding: 72px 0 56px;
+	}
+
+	.hero,
+	.flow,
+	.systems,
+	.database {
+		scroll-margin-top: 28px;
 	}
 
 	.hero {
@@ -419,6 +426,13 @@
 		main {
 			width: min(100% - 28px, 680px);
 			padding-top: 34px;
+		}
+
+		.hero,
+		.flow,
+		.systems,
+		.database {
+			scroll-margin-top: 82px;
 		}
 
 		.hero {

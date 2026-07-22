@@ -1,5 +1,6 @@
 <script lang="ts">
 	import favicon from '$lib/assets/favicon.svg';
+	import AppSidebar from '$lib/components/AppSidebar.svelte';
 	import '../app.css';
 
 	let { children } = $props();
@@ -14,4 +15,21 @@
 	/>
 </svelte:head>
 
-{@render children()}
+<AppSidebar />
+
+<div class="app-content">
+	{@render children()}
+</div>
+
+<style>
+	.app-content {
+		min-width: 0;
+		margin-left: var(--sidebar-width);
+	}
+
+	@media (max-width: 960px) {
+		.app-content {
+			margin-left: 0;
+		}
+	}
+</style>

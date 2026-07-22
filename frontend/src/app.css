@@ -14,6 +14,7 @@
 html {
 	min-width: 320px;
 	background: #f4f7f2;
+	scroll-behavior: smooth;
 }
 
 body {
@@ -31,4 +32,15 @@ select {
 
 a {
 	color: inherit;
+}
+
+:focus-visible {
+	outline: 3px solid rgba(77, 137, 80, 0.5);
+	outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	html {
+		scroll-behavior: auto;
+	}
 }
