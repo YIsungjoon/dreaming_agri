@@ -2,6 +2,33 @@
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
+
+	const weatherLabels: Record<number, string> = {
+		0: '맑음',
+		1: '대체로 맑음',
+		2: '부분적으로 흐림',
+		3: '흐림',
+		45: '안개',
+		48: '서리 안개',
+		51: '약한 이슬비',
+		53: '이슬비',
+		55: '강한 이슬비',
+		61: '약한 비',
+		63: '비',
+		65: '강한 비',
+		80: '약한 소나기',
+		81: '소나기',
+		82: '강한 소나기',
+		95: '뇌우'
+	};
+
+	function formatObservationTime(value: string, timezone: string) {
+		return new Intl.DateTimeFormat('ko-KR', {
+			timeZone: timezone,
+			dateStyle: 'medium',
+			timeStyle: 'short'
+		}).format(new Date(value));
+	}
 </script>
 
 <svelte:head>
@@ -68,9 +95,11 @@
 
 	<section class="database" aria-labelledby="database-title">
 		<div>
-			<p class="database-label">SUPABASE CONNECTION</p>
-			<h2 id="database-title">Countries</h2>
-			<p class="database-description">SvelteKit 서버에서 Supabase의 공개 테이블을 조회합니다.</p>
+			<p class="database-label">VIRTUAL FARM WEATHER</p>
+			<h2 id="database-title">{data.farm?.name ?? '김제 가상농장'}</h2>
+			<p class="database-description">
+				{data.farm?.region ?? '전북특별자치도 김제시'}에 고정한 가상농장의 최신 날씨 기록입니다.
+			</p>
 		</div>
 
 		{#if !data.supabase.configured}
@@ -83,15 +112,35 @@
 				<strong>Supabase 조회 실패</strong>
 				<span>{data.supabase.error}</span>
 			</div>
+		{:else if !data.weather}
+			<div class="connection-state pending">
+				<strong>첫 날씨 기록 대기 중</strong>
+				<span><code>record-weather</code> 함수를 실행하면 현재 날씨가 저장됩니다.</span>
+			</div>
 		{:else}
-			<ul class="country-list">
-				{#each data.countries as country}
-					<li>
-						<span>{String(country.id).padStart(2, '0')}</span>
-						<strong>{country.name}</strong>
-					</li>
-				{/each}
-			</ul>
+			<div class="weather-summary">
+				<div class="weather-primary">
+					<span>{weatherLabels[data.weather.weather_code] ?? `기상 코드 ${data.weather.weather_code}`}</span>
+					<strong>{data.weather.temperature_c}°C</strong>
+					<small>
+						{formatObservationTime(data.weather.observed_at, data.farm?.timezone ?? 'Asia/Seoul')}
+					</small>
+				</div>
+				<dl>
+					<div>
+						<dt>습도</dt>
+						<dd>{data.weather.relative_humidity_pct}%</dd>
+					</div>
+					<div>
+						<dt>강수량</dt>
+						<dd>{data.weather.precipitation_mm} mm</dd>
+					</div>
+					<div>
+						<dt>풍속</dt>
+						<dd>{data.weather.wind_speed_kph} km/h</dd>
+					</div>
+				</dl>
+			</div>
 		{/if}
 	</section>
 </main>
@@ -308,30 +357,62 @@
 		border-color: rgba(255, 152, 136, 0.5);
 	}
 
-	.country-list {
-		margin: 0;
-		padding: 0;
-		list-style: none;
-		border-top: 1px solid rgba(255, 255, 255, 0.2);
-	}
-
-	.country-list li {
+	.weather-summary {
 		display: grid;
-		grid-template-columns: 48px 1fr;
-		gap: 14px;
-		align-items: center;
-		padding: 18px 4px;
-		border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+		grid-template-columns: minmax(140px, 0.8fr) minmax(220px, 1.2fr);
+		gap: 28px;
+		padding: 24px;
+		border: 1px solid rgba(255, 255, 255, 0.14);
+		border-radius: 18px;
+		background: rgba(255, 255, 255, 0.06);
 	}
 
-	.country-list span {
-		font-size: 0.76rem;
+	.weather-primary {
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
+	}
+
+	.weather-primary span {
+		font-size: 0.82rem;
 		font-weight: 700;
-		color: #88b691;
+		color: #9bcda2;
 	}
 
-	.country-list strong {
-		font-size: 1.04rem;
+	.weather-primary strong {
+		font-size: clamp(2.5rem, 6vw, 4rem);
+		line-height: 1;
+		letter-spacing: -0.06em;
+	}
+
+	.weather-primary small {
+		font-size: 0.76rem;
+		color: #bad0c0;
+	}
+
+	.weather-summary dl {
+		display: grid;
+		grid-template-columns: repeat(3, 1fr);
+		gap: 10px;
+		margin: 0;
+	}
+
+	.weather-summary dl div {
+		padding: 18px 12px;
+		border-radius: 14px;
+		background: rgba(255, 255, 255, 0.07);
+	}
+
+	.weather-summary dt {
+		margin-bottom: 12px;
+		font-size: 0.72rem;
+		color: #9fb7a6;
+	}
+
+	.weather-summary dd {
+		margin: 0;
+		font-size: 1rem;
+		font-weight: 700;
 	}
 
 	@media (max-width: 800px) {
@@ -384,6 +465,10 @@
 			gap: 30px;
 			padding: 32px 24px;
 			border-radius: 22px;
+		}
+
+		.weather-summary {
+			grid-template-columns: 1fr;
 		}
 	}
 </style>
