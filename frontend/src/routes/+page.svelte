@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { PageData } from './$types';
 	import { farmStore } from '$lib/farmStore.svelte';
+	import WeatherPestWidget from '$lib/components/WeatherPestWidget.svelte';
 	import type { GrowthStage } from '$lib/types';
 
 	let { data }: { data: PageData } = $props();
@@ -114,6 +115,9 @@
 			</div>
 		{/if}
 	</section>
+
+	<!-- Real-time Agricultural Weather & Pest Warnings API Widget -->
+	<WeatherPestWidget />
 
 	<!-- Today's Quick Tasks Overview -->
 	<div class="two-col-grid">

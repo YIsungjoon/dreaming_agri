@@ -1,0 +1,271 @@
+<script lang="ts">
+	import { farmStore } from '$lib/farmStore.svelte';
+	import {
+		fetchAgriculturalWeather,
+		fetchPestWarnings,
+		type WeatherInfo,
+		type PestWarningInfo
+	} from '$lib/services/agriApiService';
+
+	let weather = $state<WeatherInfo | null>(null);
+	let pestWarnings = $state<PestWarningInfo[]>([]);
+	let loading = $state(true);
+
+	const currentFarm = $derived(farmStore.currentFarm);
+
+	$effect(() => {
+		loadApiData(currentFarm.region, currentFarm.crop);
+	});
+
+	async function loadApiData(region: string, crop: string) {
+		loading = true;
+		try {
+			const [wData, pData] = await Promise.all([
+				fetchAgriculturalWeather(region),
+				fetchPestWarnings(crop)
+			]);
+			weather = wData;
+			pestWarnings = pData;
+		} finally {
+			loading = false;
+		}
+	}
+</script>
+
+<div class="api-widget-container">
+	<!-- Left: Agricultural Weather API Widget -->
+	<div class="widget-card weather-card">
+		<div class="widget-header">
+			<span class="badge-api">🌤️ 공공 API 연동</span>
+			<h3>농업 기상 & 미세기상 특보</h3>
+			<span class="region-tag">📍 {currentFarm.region}</span>
+		</div>
+
+		{#if loading}
+			<div class="loading-box">기상청 농업 기상 데이터를 불러오는 중...</div>
+		{:else if weather}
+			<div class="weather-body">
+				<div class="metrics-row">
+					<div class="metric-item">
+						<span class="label">기온</span>
+						<span class="value temp">{weather.temperature}°C</span>
+					</div>
+					<div class="metric-item">
+						<span class="label">상대습도</span>
+						<span class="value humidity">{weather.humidity}%</span>
+					</div>
+					<div class="metric-item">
+						<span class="label">강수확률</span>
+						<span class="value rain">{weather.precipitationProbability}%</span>
+					</div>
+				</div>
+
+				<div class="warning-alert-box" class:alert-active={weather.warningType !== 'none'}>
+					<strong>{weather.warningMessage}</strong>
+					<p>💡 {weather.recommendation}</p>
+				</div>
+			</div>
+		{/if}
+	</div>
+
+	<!-- Right: NIFS/RDA Pest & Disease Warning API Widget -->
+	<div class="widget-card pest-card">
+		<div class="widget-header">
+			<span class="badge-api">🐛 농진청 API 연동</span>
+			<h3>병해충 예찰 & 경보 정보</h3>
+			<span class="crop-tag">🌱 {currentFarm.crop} ({currentFarm.variety})</span>
+		</div>
+
+		{#if loading}
+			<div class="loading-box">농진청 병해충 예찰 데이터를 불러오는 중...</div>
+		{:else}
+			<div class="pest-list">
+				{#each pestWarnings as item}
+					<div class="pest-item">
+						<div class="pest-item-top">
+							<span class="pest-name">🐛 {item.pestName}</span>
+							<span
+								class="level-badge"
+								class:lvl-danger={item.warningLevel === '경보'}
+								class:lvl-warning={item.warningLevel === '주의'}
+								class:lvl-info={item.warningLevel === '관심'}
+							>
+								{item.warningLevel}
+							</span>
+						</div>
+						<p class="pest-desc">{item.description}</p>
+						<div class="preventive-box">
+							<strong>🛡️ 예방 방제 수칙:</strong> {item.preventiveAction}
+						</div>
+					</div>
+				{/each}
+			</div>
+		{/if}
+	</div>
+</div>
+
+<style>
+	.api-widget-container {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+		gap: 20px;
+		margin-bottom: 24px;
+	}
+
+	.widget-card {
+		background: #ffffff;
+		border: 1px solid #dce5dc;
+		border-radius: 18px;
+		padding: 20px;
+		box-shadow: 0 6px 20px rgba(23, 61, 41, 0.04);
+	}
+
+	.widget-header {
+		display: flex;
+		align-items: center;
+		flex-wrap: wrap;
+		gap: 8px;
+		margin-bottom: 16px;
+	}
+
+	.badge-api {
+		font-size: 0.72rem;
+		font-weight: 800;
+		color: #15803d;
+		background: #dcfce7;
+		padding: 2px 8px;
+		border-radius: 6px;
+	}
+
+	.widget-header h3 {
+		margin: 0;
+		font-size: 1.1rem;
+		color: #173d29;
+		flex: 1;
+	}
+
+	.region-tag, .crop-tag {
+		font-size: 0.78rem;
+		color: #556c5e;
+		font-weight: 700;
+		background: #f0f7ef;
+		padding: 3px 8px;
+		border-radius: 6px;
+	}
+
+	.loading-box {
+		padding: 30px;
+		text-align: center;
+		font-size: 0.85rem;
+		color: #6a7f72;
+	}
+
+	.metrics-row {
+		display: flex;
+		justify-content: space-around;
+		background: #f6faf6;
+		padding: 12px;
+		border-radius: 12px;
+		margin-bottom: 14px;
+	}
+
+	.metric-item {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+	}
+
+	.metric-item .label {
+		font-size: 0.75rem;
+		color: #5d7366;
+		margin-bottom: 4px;
+	}
+
+	.metric-item .value {
+		font-size: 1.25rem;
+		font-weight: 800;
+	}
+
+	.value.temp { color: #dc2626; }
+	.value.humidity { color: #2563eb; }
+	.value.rain { color: #059669; }
+
+	.warning-alert-box {
+		padding: 12px 16px;
+		border-radius: 12px;
+		background: #f9faf9;
+		border: 1px solid #e1ebe0;
+	}
+
+	.warning-alert-box.alert-active {
+		background: #fff7ed;
+		border-color: #fdba74;
+	}
+
+	.warning-alert-box strong {
+		display: block;
+		font-size: 0.88rem;
+		color: #c2410c;
+		margin-bottom: 4px;
+	}
+
+	.warning-alert-box p {
+		margin: 0;
+		font-size: 0.8rem;
+		color: #431407;
+		line-height: 1.45;
+	}
+
+	.pest-list {
+		display: flex;
+		flex-direction: column;
+		gap: 12px;
+	}
+
+	.pest-item {
+		padding: 12px 14px;
+		border-radius: 12px;
+		background: #fafcf9;
+		border: 1px solid #e3ebe2;
+	}
+
+	.pest-item-top {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		margin-bottom: 6px;
+	}
+
+	.pest-name {
+		font-size: 0.9rem;
+		font-weight: 800;
+		color: #1c522e;
+	}
+
+	.level-badge {
+		font-size: 0.72rem;
+		font-weight: 800;
+		padding: 2px 8px;
+		border-radius: 6px;
+	}
+
+	.lvl-danger { background: #fee2e2; color: #b91c1c; }
+	.lvl-warning { background: #ffedd5; color: #c2410c; }
+	.lvl-info { background: #e0f2fe; color: #0369a1; }
+
+	.pest-desc {
+		margin: 0 0 8px;
+		font-size: 0.8rem;
+		color: #556c5e;
+		line-height: 1.4;
+	}
+
+	.preventive-box {
+		font-size: 0.78rem;
+		color: #166534;
+		background: #f0fdf4;
+		padding: 8px 10px;
+		border-radius: 8px;
+		border: 1px solid #bbf7d0;
+	}
+</style>
