@@ -2,17 +2,20 @@ from typing import Dict, Type, Optional
 from langchain_core.language_models.chat_models import BaseChatModel
 from .base import BaseLLMProvider
 from .providers.nvidia_provider import NvidiaLLMProvider
+from .providers.nemotron_provider import NemotronLLMProvider
 from .providers.mock_provider import MockLLMProvider
 from ..config import config
 
 class LLMFactory:
     """
-    Registry & Factory pattern for managing multiple LLM providers (SoC Architecture).
-    Allows adding new providers seamlessly (NVIDIA, OpenAI, Anthropic, Ollama, etc.).
+    Registry & Factory pattern for managing multiple LLM providers.
+    - General Chat / Q&A: nvidia/nemotron-3.5-nano-30b-a3b (NemotronLLMProvider)
+    - Agent Reasoning: z-ai/glm-5.2 (NvidiaLLMProvider)
     """
     
     _providers: Dict[str, Type[BaseLLMProvider]] = {
         "nvidia": NvidiaLLMProvider,
+        "nemotron": NemotronLLMProvider,
         "mock": MockLLMProvider,
     }
 
@@ -26,13 +29,18 @@ class LLMFactory:
         cls,
         provider: Optional[str] = None,
         model: Optional[str] = None,
+        mode: str = "chat", # 'chat' or 'agent'
         **kwargs
     ) -> BaseLLMProvider:
         """Instantiates and returns a BaseLLMProvider instance"""
-        provider_name = (provider or config.default_provider).lower()
-        model_name = model or config.default_model
+        if mode == "agent":
+            provider_name = provider or "nvidia"
+            model_name = model or config.default_agent_model
+        else:
+            provider_name = provider or "nemotron"
+            model_name = model or config.default_chat_model
 
-        provider_cls = cls._providers.get(provider_name)
+        provider_cls = cls._providers.get(provider_name.lower())
         if not provider_cls:
             raise ValueError(
                 f"Unknown LLM Provider '{provider_name}'. Available providers: {list(cls._providers.keys())}"
@@ -45,16 +53,18 @@ class LLMFactory:
         cls,
         provider: Optional[str] = None,
         model: Optional[str] = None,
+        mode: str = "chat",
         **kwargs
     ) -> BaseChatModel:
         """Convenience method to directly retrieve a LangChain BaseChatModel"""
-        llm_provider = cls.create(provider=provider, model=model, **kwargs)
+        llm_provider = cls.create(provider=provider, model=model, mode=mode, **kwargs)
         return llm_provider.get_chat_model(**kwargs)
 
 def get_llm(
     provider: Optional[str] = None,
     model: Optional[str] = None,
+    mode: str = "chat",
     **kwargs
 ) -> BaseChatModel:
     """Utility function to retrieve an initialized LangChain ChatModel"""
-    return LLMFactory.get_chat_model(provider=provider, model=model, **kwargs)
+    return LLMFactory.get_chat_model(provider=provider, model=model, mode=mode, **kwargs)

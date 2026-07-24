@@ -6,10 +6,11 @@ from ...core.factory import get_llm
 def reasoning_node(state: FarmAgentState) -> Dict:
     """
     Reasoning Node in LangGraph workflow.
-    Uses ChatNVIDIA (or configured LLM provider) to generate farm operational insights.
+    Uses GLM 5.2 (z-ai/glm-5.2) Agent Model for complex reasoning workflows.
     """
     try:
-        llm = get_llm()
+        # Agent Workflows explicitly use GLM 5.2 (mode="agent")
+        llm = get_llm(mode="agent")
     except Exception:
         # Fallback to mock provider if API key is not configured locally
         from ...core.factory import LLMFactory
