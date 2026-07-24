@@ -2,6 +2,7 @@
 	import type { PageData } from './$types';
 	import { farmStore } from '$lib/farmStore.svelte';
 	import WeatherPestWidget from '$lib/components/WeatherPestWidget.svelte';
+	import MarketPriceWidget from '$lib/components/MarketPriceWidget.svelte';
 	import { fetchAgriculturalWeather, type WeatherInfo } from '$lib/services/agriApiService';
 	import type { GrowthStage } from '$lib/types';
 
@@ -136,6 +137,9 @@
 
 	<!-- Real-time Agricultural Weather & Pest Warnings API Widget -->
 	<WeatherPestWidget />
+
+	<!-- Real-time aT KAMIS Wholesale Market Price & Revenue Calculator Widget -->
+	<MarketPriceWidget />
 
 	<!-- Today's Quick Tasks Overview -->
 	<div class="two-col-grid">
