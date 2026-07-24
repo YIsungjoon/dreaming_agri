@@ -1,5 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
+import { supabase } from '$lib/supabaseClient';
 
 // Map Korean regions to precise latitude and longitude
 const REGION_COORDINATES: Record<string, { lat: number; lon: number; name: string }> = {
@@ -10,6 +11,7 @@ const REGION_COORDINATES: Record<string, { lat: number; lon: number; name: strin
 
 export const GET: RequestHandler = async ({ url, setHeaders }) => {
 	const regionParam = url.searchParams.get('region') || '김제';
+	const farmId = url.searchParams.get('farm_id') || null;
 	
 	// Set 1-hour cache header
 	setHeaders({
@@ -24,6 +26,8 @@ export const GET: RequestHandler = async ({ url, setHeaders }) => {
 			break;
 		}
 	}
+
+	let weatherRecord;
 
 	try {
 		// Call real-time global weather API (Open-Meteo API for real-time Korea observations)
@@ -57,24 +61,20 @@ export const GET: RequestHandler = async ({ url, setHeaders }) => {
 			recommendation = '야간 다겹 보온 커튼 밀폐 및 난방기 자동 온실 최저 15°C 고정 설정을 확인하세요.';
 		}
 
-		return json({
-			success: true,
-			weather: {
-				region: targetGeo.name,
-				temperature: temp,
-				humidity,
-				precipitationProbability: rainProb,
-				skyCondition: humidity > 80 ? 'cloudy' : 'sunny',
-				warningType,
-				warningMessage: warningMsg,
-				recommendation,
-				updatedAt: new Date().toISOString()
-			}
-		});
+		weatherRecord = {
+			region: targetGeo.name,
+			temperature: temp,
+			humidity,
+			precipitationProbability: rainProb,
+			skyCondition: humidity > 80 ? 'cloudy' : 'sunny',
+			warningType,
+			warningMessage: warningMsg,
+			recommendation,
+			updatedAt: new Date().toISOString()
+		};
 	} catch (err: any) {
 		console.warn(`Real-time weather API call failed for ${targetGeo.name}, using location-specific fallback:`, err?.message);
 
-		// Location-specific fallback if network to external API is interrupted
 		let temp = 27.5;
 		let humidity = 78;
 		if (targetGeo.name.includes('성주')) {
@@ -88,19 +88,44 @@ export const GET: RequestHandler = async ({ url, setHeaders }) => {
 			humidity = 84;
 		}
 
-		return json({
-			success: true,
-			weather: {
-				region: targetGeo.name,
-				temperature: temp,
-				humidity,
-				precipitationProbability: 30,
-				skyCondition: 'sunny',
-				warningType: humidity >= 80 ? 'high_humidity' : 'none',
-				warningMessage: `📍 ${targetGeo.name} 실시간 농업 기상 관측 (${temp}°C, ${humidity}%)`,
-				recommendation: '정상 환기 및 관수 스케줄을 유지하세요.',
-				updatedAt: new Date().toISOString()
-			}
-		});
+		weatherRecord = {
+			region: targetGeo.name,
+			temperature: temp,
+			humidity,
+			precipitationProbability: 30,
+			skyCondition: 'sunny',
+			warningType: humidity >= 80 ? 'high_humidity' : 'none',
+			warningMessage: `📍 ${targetGeo.name} 실시간 농업 기상 관측 (${temp}°C, ${humidity}%)`,
+			recommendation: '정상 환기 및 관수 스케줄을 유지하세요.',
+			updatedAt: new Date().toISOString()
+		};
 	}
+
+	// Persist to Supabase DB if client is connected
+	if (supabase) {
+		try {
+			const { error } = await supabase
+				.from('weather_observations')
+				.insert({
+					farm_id: farmId,
+					region: weatherRecord.region,
+					temperature: weatherRecord.temperature,
+					humidity: weatherRecord.humidity,
+					precipitation_probability: weatherRecord.precipitationProbability,
+					sky_condition: weatherRecord.skyCondition,
+					warning_type: weatherRecord.warningType,
+					warning_message: weatherRecord.warningMessage,
+					recommendation: weatherRecord.recommendation,
+					observed_at: new Date().toISOString()
+				});
+			if (error) console.warn('Supabase weather_observations insert error:', error.message);
+		} catch (e: any) {
+			console.warn('Supabase insert exception:', e?.message || e);
+		}
+	}
+
+	return json({
+		success: true,
+		weather: weatherRecord
+	});
 };

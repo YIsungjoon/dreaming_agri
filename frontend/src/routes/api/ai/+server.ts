@@ -1,6 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { env } from '$env/dynamic/private';
+import { supabase } from '$lib/supabaseClient';
 
 export const POST: RequestHandler = async ({ request }) => {
 	const startTime = Date.now();
@@ -18,12 +19,14 @@ export const POST: RequestHandler = async ({ request }) => {
 
 		if (!nvidiaApiKey) {
 			const latencyMs = Date.now() - startTime;
-			return json({
-				success: true,
-				answer: `💡 <strong>${farm_name ?? '농장'} AI 분석 결과 (${primaryModel})</strong>:<br/>
+			const answer = `💡 <strong>${farm_name ?? '농장'} AI 분석 결과 (${primaryModel})</strong>:<br/>
 Vercel 환경변수에 <code>NVIDIA_API_KEY</code>가 등록되어 있습니다. 로컬 개발 환경에서도 동기화하려면 <code>cd frontend && npx vercel env pull .env.development.local</code>을 실행하세요.<br/><br/>
 • <strong>대상 작물/단계</strong>: ${crop ?? '토마토'} (${growth_stage ?? '생식생장기'})<br/>
-• <strong>권장 수칙</strong>: 3화방 착과기 고습도 지속 시 5일 간격 방제제 살포 및 온실 하부 통풍 적엽 조치를 권장합니다.`,
+• <strong>권장 수칙</strong>: 3화방 착과기 고습도 지속 시 5일 간격 방제제 살포 및 온실 하부 통풍 적엽 조치를 권장합니다.`;
+
+			return json({
+				success: true,
+				answer,
 				source: 'fallback_no_key',
 				metrics: {
 					latency_ms: latencyMs,
@@ -111,6 +114,44 @@ Vercel 환경변수에 <code>NVIDIA_API_KEY</code>가 등록되어 있습니다.
 		const promptTokens = usage.prompt_tokens ?? null;
 		const completionTokens = usage.completion_tokens ?? null;
 		const totalTokens = usage.total_tokens ?? null;
+
+		// Persist Chat Log to Supabase DB
+		if (supabase) {
+			try {
+				const { error } = await supabase
+					.from('chat_logs')
+					.insert([
+						{
+							farm_id,
+							role: 'user',
+							content: question,
+							crop: crop ?? '토마토',
+							growth_stage: growth_stage ?? '생식생장기',
+							model: usedModel,
+							mode,
+							http_status: response.status
+						},
+						{
+							farm_id,
+							role: 'assistant',
+							content: aiContent,
+							crop: crop ?? '토마토',
+							growth_stage: growth_stage ?? '생식생장기',
+							model: usedModel,
+							mode,
+							latency_ms: latencyMs,
+							prompt_tokens: promptTokens,
+							completion_tokens: completionTokens,
+							total_tokens: totalTokens,
+							reasoning_content: reasoningContent,
+							http_status: response.status
+						}
+					]);
+				if (error) console.warn('Supabase chat_logs insert error:', error.message);
+			} catch (e: any) {
+				console.warn('Supabase chat_logs insert exception:', e?.message || e);
+			}
+		}
 
 		return json({
 			success: true,
