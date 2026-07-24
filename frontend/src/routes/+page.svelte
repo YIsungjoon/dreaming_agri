@@ -1,8 +1,6 @@
 <script lang="ts">
 	import type { PageData } from './$types';
 	import { farmStore } from '$lib/farmStore.svelte';
-	import WeatherPestWidget from '$lib/components/WeatherPestWidget.svelte';
-	import MarketPriceWidget from '$lib/components/MarketPriceWidget.svelte';
 	import { fetchAgriculturalWeather, type WeatherInfo } from '$lib/services/agriApiService';
 	import type { GrowthStage } from '$lib/types';
 
@@ -135,11 +133,20 @@
 		{/if}
 	</section>
 
-	<!-- Real-time Agricultural Weather & Pest Warnings API Widget -->
-	<WeatherPestWidget />
-
-	<!-- Real-time aT KAMIS Wholesale Market Price & Revenue Calculator Widget -->
-	<MarketPriceWidget />
+	<!-- Concise Market & Weather Quick Insight Banner -->
+	<div class="market-quick-banner">
+		<div class="banner-info">
+			<span class="badge-quick">📊 실시간 농업 분석 요약</span>
+			<h4>{farmStore.currentFarm.name} 기상 특보 & {farmStore.currentFarm.crop} 도매시세</h4>
+			<div class="quick-stats-row">
+				<span>🌤️ <strong>관측 기온:</strong> {realTimeWeather ? `${realTimeWeather.temperature}°C (습도 ${realTimeWeather.humidity}%)` : '수집 중...'}</span>
+				<span>💰 <strong>{farmStore.currentFarm.crop} 도매가:</strong> 최근 상승세 (전국 평균 34,500원)</span>
+			</div>
+		</div>
+		<a href="/market" class="btn-goto-market">
+			도매시세 & 상세 기상 분석 보러가기 &rarr;
+		</a>
+	</div>
 
 	<!-- Today's Quick Tasks Overview -->
 	<div class="two-col-grid">
@@ -381,6 +388,57 @@
 	.active-farm-card {
 		background: linear-gradient(135deg, #ffffff 0%, #f6faf5 100%);
 		border-color: #cde0ca;
+	}
+
+	.market-quick-banner {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		flex-wrap: wrap;
+		gap: 16px;
+		background: linear-gradient(135deg, #f0f7f0 0%, #e2f0e0 100%);
+		border: 1px solid #cde0ca;
+		border-radius: 16px;
+		padding: 18px 24px;
+		margin-bottom: 24px;
+	}
+
+	.badge-quick {
+		font-size: 0.72rem;
+		font-weight: 800;
+		color: #1e40af;
+		background: #ffffff;
+		padding: 2px 8px;
+		border-radius: 6px;
+	}
+
+	.banner-info h4 {
+		margin: 4px 0;
+		font-size: 1.1rem;
+		color: #164228;
+	}
+
+	.quick-stats-row {
+		display: flex;
+		gap: 18px;
+		font-size: 0.82rem;
+		color: #4b6152;
+		flex-wrap: wrap;
+	}
+
+	.btn-goto-market {
+		padding: 10px 18px;
+		background: #173d29;
+		color: #ffffff;
+		border-radius: 10px;
+		font-size: 0.85rem;
+		font-weight: 750;
+		text-decoration: none;
+		transition: background 0.2s;
+	}
+
+	.btn-goto-market:hover {
+		background: #25663b;
 	}
 
 	.farm-header-row {
