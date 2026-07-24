@@ -3,9 +3,10 @@ import type { RequestHandler } from './$types';
 import { env } from '$env/dynamic/private';
 
 export const POST: RequestHandler = async ({ request }) => {
+	const startTime = Date.now();
 	try {
 		const body = await request.json();
-		const { question, farm_name, crop, growth_stage, system_prompt, mode = 'chat' } = body;
+		const { question, farm_name, crop, growth_stage, system_prompt, mode = 'chat', farm_id, session_id } = body;
 
 		const rawApiKey = env.NVIDIA_API_KEY;
 		const nvidiaApiKey = rawApiKey ? rawApiKey.trim() : '';
@@ -16,13 +17,19 @@ export const POST: RequestHandler = async ({ request }) => {
 		const fallbackModel = isAgentMode ? 'nvidia/nemotron-3.5-nano-30b-a3b' : 'z-ai/glm-5.2';
 
 		if (!nvidiaApiKey) {
+			const latencyMs = Date.now() - startTime;
 			return json({
 				success: true,
 				answer: `💡 <strong>${farm_name ?? '농장'} AI 분석 결과 (${primaryModel})</strong>:<br/>
 Vercel 환경변수에 <code>NVIDIA_API_KEY</code>가 등록되어 있습니다. 로컬 개발 환경에서도 동기화하려면 <code>cd frontend && npx vercel env pull .env.development.local</code>을 실행하세요.<br/><br/>
 • <strong>대상 작물/단계</strong>: ${crop ?? '토마토'} (${growth_stage ?? '생식생장기'})<br/>
 • <strong>권장 수칙</strong>: 3화방 착과기 고습도 지속 시 5일 간격 방제제 살포 및 온실 하부 통풍 적엽 조치를 권장합니다.`,
-				source: 'fallback_no_key'
+				source: 'fallback_no_key',
+				metrics: {
+					latency_ms: latencyMs,
+					model: primaryModel,
+					mode
+				}
 			});
 		}
 
@@ -70,6 +77,8 @@ Vercel 환경변수에 <code>NVIDIA_API_KEY</code>가 등록되어 있습니다.
 			usedModel = fallbackModel;
 		}
 
+		const latencyMs = Date.now() - startTime;
+
 		if (!response.ok) {
 			const errorText = await response.text();
 			console.error(`NVIDIA API Error (${response.status}):`, errorText);
@@ -78,32 +87,62 @@ Vercel 환경변수에 <code>NVIDIA_API_KEY</code>가 등록되어 있습니다.
 				success: false,
 				answer: `⚠️ <strong>NVIDIA API 연결 상태 점검 (${response.status})</strong><br/>불러오기 응답: ${errorText}<br/><br/>💡 <em>(Vercel의 NVIDIA_API_KEY 값이 유효한지 확인해 주세요.)</em>`,
 				status: response.status,
-				error: true
+				error: true,
+				metrics: {
+					latency_ms: latencyMs,
+					model: usedModel,
+					mode,
+					http_status: response.status
+				}
 			});
 		}
 
 		const data = await response.json();
 		const choice = data.choices?.[0];
 		let aiContent = choice?.message?.content || '답변 내용을 수신하지 못했습니다.';
+		let reasoningContent = choice?.message?.reasoning_content || null;
 
-		if (choice?.message?.reasoning_content) {
-			const reasoning = choice.message.reasoning_content;
-			aiContent = `💭 <em>[생각 과정]: ${reasoning.slice(0, 300)}...</em><br/><br/>${aiContent}`;
+		if (reasoningContent) {
+			aiContent = `💭 <em>[생각 과정]: ${reasoningContent.slice(0, 300)}...</em><br/><br/>${aiContent}`;
 		}
+
+		// Extract Token Consumption Metrics
+		const usage = data.usage || {};
+		const promptTokens = usage.prompt_tokens ?? null;
+		const completionTokens = usage.completion_tokens ?? null;
+		const totalTokens = usage.total_tokens ?? null;
 
 		return json({
 			success: true,
 			answer: aiContent.replace(/\n/g, '<br/>'),
 			model: usedModel,
 			mode,
-			source: 'nvidia'
+			source: 'nvidia',
+			metrics: {
+				latency_ms: latencyMs,
+				prompt_tokens: promptTokens,
+				completion_tokens: completionTokens,
+				total_tokens: totalTokens,
+				http_status: response.status
+			},
+			context_snapshot: {
+				farm_id,
+				session_id,
+				crop: crop ?? '토마토',
+				growth_stage: growth_stage ?? '생식생장기'
+			}
 		});
 	} catch (err: any) {
+		const latencyMs = Date.now() - startTime;
 		console.error('Server endpoint exception:', err);
 		return json({
 			success: false,
 			answer: `⚠️ 서버 처리 중 예외가 발생했습니다: ${err?.message || err}`,
-			error: true
+			error: true,
+			metrics: {
+				latency_ms: latencyMs,
+				http_status: 500
+			}
 		});
 	}
 };
