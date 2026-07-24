@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { farmStore } from '$lib/farmStore.svelte';
+	import FarmingCalendar from '$lib/components/FarmingCalendar.svelte';
 	import type { Task, TaskCategory, TaskPriority, IssueCategory } from '$lib/types';
 
 	let viewMode = $state<'today' | 'weekly' | 'all'>('today');
@@ -25,6 +26,11 @@
 	let newDate = $state(new Date().toISOString().slice(0, 10));
 	let newCategory = $state<TaskCategory>('관수/시비');
 	let newPriority = $state<TaskPriority>('medium');
+
+	function openAddTaskForDate(dateStr: string) {
+		newDate = dateStr;
+		showNewTaskModal = true;
+	}
 
 	// Sample Crop Issue Photos for quick selection
 	const samplePhotos = [
@@ -111,13 +117,16 @@
 	<header class="header-bar">
 		<div>
 			<span class="sub-badge">{farmStore.currentFarm.name}</span>
-			<h1>농작업 일정 및 수행 기록</h1>
-			<p>오늘의 작업, 주간 스케줄, 작업 수행/문제 발생 등록 및 자동 후속작업을 관리합니다.</p>
+			<h1>농사 달력 & 농작업 일정</h1>
+			<p>전통 24절기 농업 지침, 주간·월간 농사 달력, 작업 수행/문제 기록 및 후속 조치를 통합 관리합니다.</p>
 		</div>
 		<button type="button" class="btn-primary" onclick={() => (showNewTaskModal = true)}>
 			+ 새 작업 일정 등록
 		</button>
 	</header>
+
+	<!-- 24 Solar Terms Farming Calendar Component -->
+	<FarmingCalendar onOpenAddTask={openAddTaskForDate} />
 
 	<!-- Filter Controls & View Selector -->
 	<div class="control-panel">
