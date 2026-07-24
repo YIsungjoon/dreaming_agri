@@ -10,11 +10,22 @@
 	let weather = $state<WeatherInfo | null>(null);
 	let pestWarnings = $state<PestWarningInfo[]>([]);
 	let loading = $state(true);
+	let lastRefreshedTime = $state<string>('');
 
 	const currentFarm = $derived(farmStore.currentFarm);
 
 	$effect(() => {
-		loadApiData(currentFarm.region, currentFarm.crop);
+		const region = currentFarm.region;
+		const crop = currentFarm.crop;
+
+		loadApiData(region, crop);
+
+		// 1-hour (3,600,000 ms) auto-refresh interval
+		const interval = setInterval(() => {
+			loadApiData(region, crop);
+		}, 3600000);
+
+		return () => clearInterval(interval);
 	});
 
 	async function loadApiData(region: string, crop: string) {
@@ -26,6 +37,7 @@
 			]);
 			weather = wData;
 			pestWarnings = pData;
+			lastRefreshedTime = new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
 		} finally {
 			loading = false;
 		}
@@ -36,18 +48,25 @@
 	<!-- Left: Agricultural Weather API Widget -->
 	<div class="widget-card weather-card">
 		<div class="widget-header">
-			<span class="badge-api">🌤️ 공공 API 연동</span>
-			<h3>농업 기상 & 미세기상 특보</h3>
-			<span class="region-tag">📍 {currentFarm.region}</span>
+			<div class="title-meta">
+				<span class="badge-api">🌤️ 1시간 단위 실시간 기상</span>
+				<h3>{currentFarm.name} 기상 관측</h3>
+			</div>
+			<div class="header-right">
+				<span class="region-tag">📍 {currentFarm.region}</span>
+				{#if lastRefreshedTime}
+					<small class="refresh-time">🔄 갱신: {lastRefreshedTime}</small>
+				{/if}
+			</div>
 		</div>
 
 		{#if loading}
-			<div class="loading-box">기상청 농업 기상 데이터를 불러오는 중...</div>
+			<div class="loading-box">해당 농가 위치의 실시간 기상관측 데이터를 불러오는 중...</div>
 		{:else if weather}
 			<div class="weather-body">
 				<div class="metrics-row">
 					<div class="metric-item">
-						<span class="label">기온</span>
+						<span class="label">실시간 기온</span>
 						<span class="value temp">{weather.temperature}°C</span>
 					</div>
 					<div class="metric-item">
@@ -71,13 +90,15 @@
 	<!-- Right: NIFS/RDA Pest & Disease Warning API Widget -->
 	<div class="widget-card pest-card">
 		<div class="widget-header">
-			<span class="badge-api">🐛 농진청 API 연동</span>
-			<h3>병해충 예찰 & 경보 정보</h3>
+			<div class="title-meta">
+				<span class="badge-api">🐛 농진청 예찰 연동</span>
+				<h3>{currentFarm.crop} 병해충 경보</h3>
+			</div>
 			<span class="crop-tag">🌱 {currentFarm.crop} ({currentFarm.variety})</span>
 		</div>
 
 		{#if loading}
-			<div class="loading-box">농진청 병해충 예찰 데이터를 불러오는 중...</div>
+			<div class="loading-box">농가 작물 병해충 예찰 데이터를 불러오는 중...</div>
 		{:else}
 			<div class="pest-list">
 				{#each pestWarnings as item}
@@ -122,10 +143,24 @@
 
 	.widget-header {
 		display: flex;
-		align-items: center;
+		justify-content: space-between;
+		align-items: flex-start;
 		flex-wrap: wrap;
-		gap: 8px;
+		gap: 12px;
 		margin-bottom: 16px;
+	}
+
+	.title-meta {
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
+	}
+
+	.header-right {
+		display: flex;
+		flex-direction: column;
+		align-items: flex-end;
+		gap: 4px;
 	}
 
 	.badge-api {
@@ -135,13 +170,13 @@
 		background: #dcfce7;
 		padding: 2px 8px;
 		border-radius: 6px;
+		width: fit-content;
 	}
 
 	.widget-header h3 {
 		margin: 0;
 		font-size: 1.1rem;
 		color: #173d29;
-		flex: 1;
 	}
 
 	.region-tag, .crop-tag {
@@ -151,6 +186,12 @@
 		background: #f0f7ef;
 		padding: 3px 8px;
 		border-radius: 6px;
+	}
+
+	.refresh-time {
+		font-size: 0.72rem;
+		color: #789082;
+		font-weight: 600;
 	}
 
 	.loading-box {
