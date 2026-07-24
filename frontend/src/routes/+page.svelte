@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { PageData } from './$types';
 	import { farmStore } from '$lib/farmStore.svelte';
+	import WeatherPestWidget from '$lib/components/WeatherPestWidget.svelte';
 	import { fetchAgriculturalWeather, type WeatherInfo } from '$lib/services/agriApiService';
 	import type { GrowthStage } from '$lib/types';
 
@@ -132,6 +133,9 @@
 			</div>
 		{/if}
 	</section>
+
+	<!-- Real-time Agricultural Weather & NIFS/RDA Pest & Disease Warning Widget -->
+	<WeatherPestWidget />
 
 	<!-- Concise Market & Weather Quick Insight Banner -->
 	<div class="market-quick-banner">
