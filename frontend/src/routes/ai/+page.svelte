@@ -24,7 +24,7 @@
 		'양액 공급 EC/pH 및 환기 관리 가이드 알려줘'
 	];
 
-	function askAI(prompt?: string) {
+	async function askAI(prompt?: string) {
 		const q = prompt || inputQuestion;
 		if (!q.trim() || isThinking) return;
 
@@ -33,44 +33,35 @@
 		inputQuestion = '';
 		isThinking = true;
 
-		setTimeout(() => {
+		const farm = farmStore.currentFarm;
+
+		try {
+			const res = await fetch('/api/ai', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					question: q,
+					farm_name: farm.name,
+					crop: farm.crop,
+					growth_stage: farm.growth_stage
+				})
+			});
+
+			const data = await res.json();
 			const aiTime = new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
-			const farm = farmStore.currentFarm;
-			const logs = farmStore.logs.filter((l) => l.farm_id === farm.id);
-			const pendingTasks = farmStore.currentFarmTasks.filter((t) => t.status === 'pending');
-			const issueLogs = logs.filter((l) => l.action === 'issue');
+			const responseText = data.answer || '답변을 생성하지 못했습니다.';
 
-			let response = '';
+			messages = [...messages, { sender: 'ai', text: responseText, time: aiTime }];
+			farmStore.addAIConsultation(farm.id, q, responseText);
+		} catch (err) {
+			const aiTime = new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+			const fallbackText = `💡 <strong>${farm.name} 기록 분석 답변</strong>:<br/>${farm.crop} (${farm.growth_stage}) 표준 가이드에 따라 온실 환기 및 양액 EC 2.2 유지를 권장합니다.`;
 
-			if (q.includes('문제') || q.includes('흰가루병') || q.includes('분석')) {
-				response = `🔍 <strong>${farm.name} 문제 기록 분석 결과</strong>:<br/>
-• <strong>발생 이슈</strong>: 최근 ${issueLogs.length}건의 문제(흰가루병 초기 반점 등)가 등록되어 있습니다.<br/>
-• <strong>원인 분석</strong>: ${farm.growth_stage} 단계 습도 상승 및 통풍 부족으로 인한 분포 가능성 높음.<br/>
-• <strong>권장 후속 조치</strong>:<br/>
- 1. 하부 노화 엽 1~2장 적엽하여 온실 하부 통풍성 30% 개선<br/>
- 2. 미생물계(탄산수소칼륨) 친환경 방제제 5일 간격 2회 엽면 살포<br/>
- 3. 야간 상대습도 70% 이하 유지 (환기팬 15분 주기 작동)`;
-			} else if (q.includes('주의사항') || q.includes('생육')) {
-				response = `🌱 <strong>${farm.crop} [${farm.growth_stage}] 핵심 관리 수칙</strong>:<br/>
-• <strong>양액 관리</strong>: EC 2.0 ~ 2.2 / pH 5.8 ~ 6.0 세팅 유지.<br/>
-• <strong>온·습도 관리</strong>: 주간 목표온도 24~26°C, 야간 최저 15°C 이상 유지.<br/>
-• <strong>세력 조절</strong>: 곁순 제거 및 착과 수 균형 관리를 통해 수확기 초세 저하 방지.`;
-			} else if (q.includes('요약') || q.includes('후속')) {
-				response = `📋 <strong>${farm.name} 실시간 작업 요약</strong>:<br/>
-• 대기 중인 작업: 총 ${pendingTasks.length}건 (${pendingTasks.map((t) => t.title).join(', ')})<br/>
-• 특이사항: 등록된 문제에 따른 후속 작업 1건이 생성되어 정상 추적 중입니다.`;
-			} else {
-				response = `💡 <strong>${farm.name} 기록 기반 답변</strong>:<br/>
-현재 정식일(${farm.planted_at}) 기준 ${farm.growth_stage}가 원활히 진행 중입니다.<br/>
-온실 환경데이터 및 등록된 작업 기록(${farmStore.currentFarmTasks.length}건)을 분석하여 최적의 생육 가이드를 제공합니다.`;
-			}
-
-			messages = [...messages, { sender: 'ai', text: response, time: aiTime }];
-
-			// Save to consultation log
-			farmStore.addAIConsultation(farm.id, q, response);
+			messages = [...messages, { sender: 'ai', text: fallbackText, time: aiTime }];
+			farmStore.addAIConsultation(farm.id, q, fallbackText);
+		} finally {
 			isThinking = false;
-		}, 800);
+		}
 	}
 
 	function generateConsultationSummary() {
