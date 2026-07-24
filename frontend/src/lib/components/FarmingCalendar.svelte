@@ -309,16 +309,16 @@
 		line-height: 1.4;
 	}
 
-	/* Monthly Calendar Grid */
+	/* Monthly Calendar Grid with Fixed Cell Dimensions */
 	.calendar-grid {
 		display: grid;
-		grid-template-columns: repeat(7, 1fr);
+		grid-template-columns: repeat(7, minmax(0, 1fr));
 		border-top: 1px solid #e1ebe0;
 		border-left: 1px solid #e1ebe0;
 	}
 
 	.day-name {
-		padding: 10px;
+		padding: 10px 4px;
 		text-align: center;
 		font-size: 0.82rem;
 		font-weight: 800;
@@ -326,23 +326,30 @@
 		background: #f4f8f4;
 		border-right: 1px solid #e1ebe0;
 		border-bottom: 1px solid #e1ebe0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
 	}
 
 	.col-sun { color: #dc2626; }
 	.col-sat { color: #2563eb; }
 
 	.calendar-cell {
-		min-height: 100px;
-		padding: 8px;
+		box-sizing: border-box;
+		height: 115px; /* Strictly fixed height for all calendar cells */
+		padding: 6px 8px;
 		border-right: 1px solid #e1ebe0;
 		border-bottom: 1px solid #e1ebe0;
 		background: #ffffff;
 		position: relative;
+		display: flex;
+		flex-direction: column;
+		overflow: hidden;
 	}
 
 	.calendar-cell.other-month {
 		background: #fafcf9;
-		opacity: 0.6;
+		opacity: 0.55;
 	}
 
 	.calendar-cell.is-today {
@@ -354,22 +361,27 @@
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
-		margin-bottom: 6px;
+		margin-bottom: 4px;
+		flex-shrink: 0;
 	}
 
 	.day-number {
-		font-size: 0.88rem;
+		font-size: 0.86rem;
 		font-weight: 750;
 		color: #173d29;
 	}
 
 	.solar-term-badge {
-		font-size: 0.68rem;
+		font-size: 0.65rem;
 		font-weight: 800;
 		color: #15803d;
 		background: #dcfce7;
-		padding: 2px 6px;
+		padding: 1px 5px;
 		border-radius: 4px;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		max-width: 70px;
 	}
 
 	.btn-add-quick {
@@ -387,9 +399,12 @@
 	}
 
 	.cell-tasks-list {
+		flex: 1;
 		display: flex;
 		flex-direction: column;
 		gap: 3px;
+		overflow-y: auto;
+		scrollbar-width: thin;
 	}
 
 	.mini-task-pill {
