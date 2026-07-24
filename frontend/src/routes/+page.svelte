@@ -1,488 +1,740 @@
 <script lang="ts">
 	import type { PageData } from './$types';
+	import { farmStore } from '$lib/farmStore.svelte';
+	import type { GrowthStage } from '$lib/types';
 
 	let { data }: { data: PageData } = $props();
 
+	// Modal & Form State for Farm Registration
+	let showRegModal = $state(false);
+	let newName = $state('');
+	let newRegion = $state('전북특별자치도 김제시');
+	let newCrop = $state('토마토');
+	let newVariety = $state('');
+	let newPlantedAt = $state(new Date().toISOString().slice(0, 10));
+	let newGrowthStage = $state<GrowthStage>('영양생장기');
+	let newNotes = $state('');
+
 	const weatherLabels: Record<number, string> = {
-		0: '맑음',
-		1: '대체로 맑음',
-		2: '부분적으로 흐림',
-		3: '흐림',
-		45: '안개',
-		48: '서리 안개',
-		51: '약한 이슬비',
-		53: '이슬비',
-		55: '강한 이슬비',
-		61: '약한 비',
-		63: '비',
-		65: '강한 비',
-		80: '약한 소나기',
-		81: '소나기',
-		82: '강한 소나기',
-		95: '뇌우'
+		0: '맑음', 1: '대체로 맑음', 2: '부분적으로 흐림', 3: '흐림',
+		45: '안개', 48: '서리 안개', 51: '약한 이슬비', 53: '이슬비', 55: '강한 이슬비',
+		61: '약한 비', 63: '비', 65: '강한 비', 80: '약한 소나기', 81: '소나기', 82: '강한 소나기', 95: '뇌우'
 	};
 
-	function formatObservationTime(value: string, timezone: string) {
-		return new Intl.DateTimeFormat('ko-KR', {
-			timeZone: timezone,
-			dateStyle: 'medium',
-			timeStyle: 'short'
-		}).format(new Date(value));
+	function handleRegisterFarm(e: SubmitEvent) {
+		e.preventDefault();
+		if (!newName || !newCrop || !newVariety) {
+			alert('농장명, 작물, 품종을 입력해 주세요.');
+			return;
+		}
+
+		farmStore.addFarm({
+			name: newName,
+			region: newRegion,
+			crop: newCrop,
+			variety: newVariety,
+			planted_at: newPlantedAt,
+			growth_stage: newGrowthStage,
+			notes: newNotes
+		});
+
+		// Reset form
+		newName = '';
+		newVariety = '';
+		newNotes = '';
+		showRegModal = false;
 	}
+
+	const growthStageBadges: Record<GrowthStage, string> = {
+		'육묘기': 'stage-seedling',
+		'영양생장기': 'stage-vegetative',
+		'생식생장기': 'stage-reproductive',
+		'수확기': 'stage-harvest',
+		'수확후정리': 'stage-post'
+	};
 </script>
 
 <svelte:head>
-	<title>Dreaming Agri | 농장 운영관리</title>
+	<title>농장 현황 & 등록 | Dreaming Agri</title>
 </svelte:head>
 
-<main>
-	<header id="overview" class="hero">
-		<div class="eyebrow"><span></span> 가상데이터 기반 MVP</div>
-		<h1>농장 데이터를<br /><strong>다음 작업</strong>으로 연결합니다.</h1>
-		<p>
-			환경 변화와 생육 상태를 읽고, 준비할 인력과 자재부터 실제 작업 기록까지 하나의 흐름으로
-			관리하는 예측형 농장 운영 플랫폼입니다.
-		</p>
+<main class="page-container">
+	<header class="hero-header">
+		<div class="header-top">
+			<div>
+				<span class="badge">MVP core</span>
+				<h1>농장·작물 현황 및 생육 단계</h1>
+				<p>가상·실제 환경데이터와 작업 기록을 기반으로 예측형 농장 운영을 시작합니다.</p>
+			</div>
+			<button type="button" class="btn-primary" onclick={() => (showRegModal = true)}>
+				<svg viewBox="0 0 24 24" class="icon"><path fill="none" stroke="currentColor" stroke-width="2" d="M12 5v14m-7-7h14"/></svg>
+				신규 농장 등록
+			</button>
+		</div>
 	</header>
 
-	<section id="flow" class="flow" aria-labelledby="flow-title">
-		<div class="section-heading">
-			<p>PRODUCT FLOW</p>
-			<h2 id="flow-title">데이터에서 실행까지</h2>
+	<!-- Current Active Farm Banner & Details -->
+	<section class="card active-farm-card">
+		<div class="farm-header-row">
+			<div class="farm-title">
+				<span class="crop-badge">{farmStore.currentFarm.crop}</span>
+				<h2>{farmStore.currentFarm.name}</h2>
+				<span class={`stage-pill ${growthStageBadges[farmStore.currentFarm.growth_stage]}`}>
+					{farmStore.currentFarm.growth_stage}
+				</span>
+			</div>
+			<div class="farm-meta">
+				<span>📍 {farmStore.currentFarm.region}</span>
+			</div>
 		</div>
 
-		<div class="steps">
-			<article>
-				<span>01</span>
-				<h3>환경·생육 해석</h3>
-				<p>가상 환경데이터와 생육단계를 함께 확인합니다.</p>
-			</article>
-			<article>
-				<span>02</span>
-				<h3>작업 일정 보정</h3>
-				<p>예상 범위와 변경 이유, 신뢰 수준을 제시합니다.</p>
-			</article>
-			<article>
-				<span>03</span>
-				<h3>준비·작업 기록</h3>
-				<p>인력과 자재를 준비하고 완료·연기 결과를 남깁니다.</p>
-			</article>
-			<article>
-				<span>04</span>
-				<h3>다음 계획 갱신</h3>
-				<p>수행 결과를 이후 일정과 AI 설명에 다시 반영합니다.</p>
-			</article>
-		</div>
-	</section>
-
-	<section id="systems" class="systems" aria-label="시스템 구성">
-		<article>
-			<p>FRONTEND</p>
-			<h2>Svelte 5</h2>
-			<span>Vercel</span>
-		</article>
-		<article>
-			<p>BACKEND</p>
-			<h2>Supabase</h2>
-			<span>Postgres · Auth · Storage</span>
-		</article>
-		<article>
-			<p>INTELLIGENCE</p>
-			<h2>AI Modules</h2>
-			<span>Forecast · RAG · Vision</span>
-		</article>
-	</section>
-
-	<section id="weather" class="database" aria-labelledby="database-title">
-		<div>
-			<p class="database-label">VIRTUAL FARM WEATHER</p>
-			<h2 id="database-title">{data.farm?.name ?? '김제 가상농장'}</h2>
-			<p class="database-description">
-				{data.farm?.region ?? '전북특별자치도 김제시'}에 고정한 가상농장의 최신 날씨 기록입니다.
-			</p>
+		<div class="farm-details-grid">
+			<div class="detail-box">
+				<small>재배 작물 / 품종</small>
+				<strong>{farmStore.currentFarm.crop} ({farmStore.currentFarm.variety})</strong>
+			</div>
+			<div class="detail-box">
+				<small>정식일 (Planting Date)</small>
+				<strong>{farmStore.currentFarm.planted_at}</strong>
+			</div>
+			<div class="detail-box">
+				<small>현재 생육 단계</small>
+				<strong class="highlight">{farmStore.currentFarm.growth_stage}</strong>
+			</div>
+			<div class="detail-box">
+				<small>오늘의 대기 작업</small>
+				<strong>{farmStore.todayTasks.filter(t => t.status === 'pending').length} 건</strong>
+			</div>
 		</div>
 
-		{#if !data.supabase.configured}
-			<div class="connection-state pending">
-				<strong>환경변수 연결 대기 중</strong>
-				<span><code>frontend/.env</code>에 Supabase URL과 anon key를 설정하세요.</span>
-			</div>
-		{:else if data.supabase.error}
-			<div class="connection-state error">
-				<strong>Supabase 조회 실패</strong>
-				<span>{data.supabase.error}</span>
-			</div>
-		{:else if !data.weather}
-			<div class="connection-state pending">
-				<strong>첫 날씨 기록 대기 중</strong>
-				<span><code>record-weather</code> 함수를 실행하면 현재 날씨가 저장됩니다.</span>
-			</div>
-		{:else}
-			<div class="weather-summary">
-				<div class="weather-primary">
-					<span>{weatherLabels[data.weather.weather_code] ?? `기상 코드 ${data.weather.weather_code}`}</span>
-					<strong>{data.weather.temperature_c}°C</strong>
-					<small>
-						{formatObservationTime(data.weather.observed_at, data.farm?.timezone ?? 'Asia/Seoul')}
-					</small>
-				</div>
-				<dl>
-					<div>
-						<dt>습도</dt>
-						<dd>{data.weather.relative_humidity_pct}%</dd>
-					</div>
-					<div>
-						<dt>강수량</dt>
-						<dd>{data.weather.precipitation_mm} mm</dd>
-					</div>
-					<div>
-						<dt>풍속</dt>
-						<dd>{data.weather.wind_speed_kph} km/h</dd>
-					</div>
-				</dl>
+		{#if farmStore.currentFarm.notes}
+			<div class="farm-notes">
+				<strong>📝 메모 & 온실 환경</strong>
+				<p>{farmStore.currentFarm.notes}</p>
 			</div>
 		{/if}
 	</section>
+
+	<!-- Today's Quick Tasks Overview -->
+	<div class="two-col-grid">
+		<section class="card">
+			<div class="card-header">
+				<h3>📅 오늘의 작업 요약</h3>
+				<a href="/tasks" class="link-more">전체 일정 보기 &rarr;</a>
+			</div>
+			{#if farmStore.todayTasks.length === 0}
+				<p class="empty-text">오늘 예정된 작업이 없습니다.</p>
+			{:else}
+				<ul class="quick-task-list">
+					{#each farmStore.todayTasks as task}
+						<li class={`task-item status-${task.status}`}>
+							<div class="task-info">
+								<span class="cat-tag">{task.category}</span>
+								<strong>{task.title}</strong>
+								{#if task.is_followup}
+									<span class="followup-tag">[후속작업]</span>
+								{/if}
+							</div>
+							<span class={`status-badge ${task.status}`}>
+								{task.status === 'completed' ? '완료' : task.status === 'issue' ? '문제발생' : '대기중'}
+							</span>
+						</li>
+					{/each}
+				</ul>
+			{/if}
+		</section>
+
+		<!-- Weather Information Section -->
+		<section class="card weather-card">
+			<div class="card-header">
+				<span class="weather-eyebrow">VIRTUAL WEATHER</span>
+				<h3>실시간 가상 기상 관측</h3>
+			</div>
+			{#if data.weather}
+				<div class="weather-content">
+					<div class="weather-temp">
+						<strong>{data.weather.temperature_c}°C</strong>
+						<span>{weatherLabels[data.weather.weather_code] ?? `기상코드 ${data.weather.weather_code}`}</span>
+					</div>
+					<div class="weather-metrics">
+						<div>
+							<small>습도</small>
+							<strong>{data.weather.relative_humidity_pct}%</strong>
+						</div>
+						<div>
+							<small>강수량</small>
+							<strong>{data.weather.precipitation_mm} mm</strong>
+						</div>
+						<div>
+							<small>풍속</small>
+							<strong>{data.weather.wind_speed_kph} km/h</strong>
+						</div>
+					</div>
+				</div>
+			{:else}
+				<div class="weather-placeholder">
+					<p>기상 수집 시스템이 연동되어 대기 중입니다.</p>
+				</div>
+			{/if}
+		</section>
+	</div>
+
+	<!-- Registered Farms List -->
+	<section class="card">
+		<div class="card-header">
+			<h3>🏡 등록된 전체 농장 목록 ({farmStore.farms.length}개)</h3>
+		</div>
+		<div class="farms-grid">
+			{#each farmStore.farms as farm}
+				<div
+					class="farm-mini-card"
+					class:selected={farm.id === farmStore.selectedFarmId}
+					role="button"
+					tabindex="0"
+					onclick={() => farmStore.selectFarm(farm.id)}
+					onkeydown={(e) => e.key === 'Enter' && farmStore.selectFarm(farm.id)}
+				>
+					<div class="mini-header">
+						<span class="mini-crop">{farm.crop}</span>
+						<h4>{farm.name}</h4>
+					</div>
+					<p class="mini-region">📍 {farm.region}</p>
+					<div class="mini-footer">
+						<span>품종: {farm.variety}</span>
+						<span class="stage-tag">{farm.growth_stage}</span>
+					</div>
+				</div>
+			{/each}
+		</div>
+	</section>
 </main>
 
+<!-- Farm Registration Modal -->
+{#if showRegModal}
+	<div class="modal-backdrop" onclick={() => (showRegModal = false)}>
+		<div class="modal-card" onclick={(e) => e.stopPropagation()}>
+			<div class="modal-header">
+				<h3>🌱 신규 농장 및 작물 등록</h3>
+				<button type="button" class="btn-close" onclick={() => (showRegModal = false)}>&times;</button>
+			</div>
+			<form onsubmit={handleRegisterFarm} class="modal-form">
+				<div class="form-group">
+					<label for="reg-name">농장명 *</label>
+					<input id="reg-name" type="text" bind:value={newName} placeholder="예: 김제 스마트 토마토 농장 2동" required />
+				</div>
+
+				<div class="form-row">
+					<div class="form-group">
+						<label for="reg-crop">작물명 *</label>
+						<input id="reg-crop" type="text" bind:value={newCrop} placeholder="예: 토마토, 참외, 파프리카" required />
+					</div>
+					<div class="form-group">
+						<label for="reg-variety">품종 *</label>
+						<input id="reg-variety" type="text" bind:value={newVariety} placeholder="예: 마이노르, 꿀봉" required />
+					</div>
+				</div>
+
+				<div class="form-row">
+					<div class="form-group">
+						<label for="reg-region">지역</label>
+						<input id="reg-region" type="text" bind:value={newRegion} placeholder="예: 전북특별자치도 김제시" />
+					</div>
+					<div class="form-group">
+						<label for="reg-planted">정식일 (Planting Date) *</label>
+						<input id="reg-planted" type="date" bind:value={newPlantedAt} required />
+					</div>
+				</div>
+
+				<div class="form-group">
+					<label for="reg-stage">현재 생육 단계 *</label>
+					<select id="reg-stage" bind:value={newGrowthStage}>
+						<option value="육묘기">육묘기</option>
+						<option value="영양생장기">영양생장기</option>
+						<option value="생식생장기">생식생장기</option>
+						<option value="수확기">수확기</option>
+						<option value="수확후정리">수확후정리</option>
+					</select>
+				</div>
+
+				<div class="form-group">
+					<label for="reg-notes">농장 메모 및 시설 정보</label>
+					<textarea id="reg-notes" bind:value={newNotes} rows="3" placeholder="예: 스마트온실 B동, EC 2.2 표준 관리"></textarea>
+				</div>
+
+				<div class="modal-actions">
+					<button type="button" class="btn-secondary" onclick={() => (showRegModal = false)}>취소</button>
+					<button type="submit" class="btn-primary">등록 완료</button>
+				</div>
+			</form>
+		</div>
+	</div>
+{/if}
+
 <style>
-	main {
-		width: min(1160px, calc(100% - 40px));
+	.page-container {
+		max-width: 1200px;
 		margin: 0 auto;
-		padding: 72px 0 56px;
+		padding: 36px 24px 60px;
 	}
 
-	.hero,
-	.flow,
-	.systems,
-	.database {
-		scroll-margin-top: 28px;
+	.hero-header {
+		margin-bottom: 28px;
 	}
 
-	.hero {
-		max-width: 780px;
-		padding: 48px 0 88px;
+	.header-top {
+		display: flex;
+		justify-content: space-between;
+		align-items: flex-end;
+		gap: 20px;
+		flex-wrap: wrap;
 	}
 
-	.eyebrow,
-	.section-heading > p,
-	.systems article > p {
-		margin: 0;
+	.badge {
+		display: inline-block;
+		padding: 4px 10px;
+		border-radius: 999px;
+		background: #dff0d9;
+		color: #2b6139;
 		font-size: 0.72rem;
-		font-weight: 750;
-		letter-spacing: 0.16em;
-		color: #3e7650;
+		font-weight: 800;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
 	}
 
-	.eyebrow {
+	h1 {
+		margin: 10px 0 8px;
+		font-size: clamp(1.8rem, 4vw, 2.4rem);
+		letter-spacing: -0.04em;
+		color: #173d29;
+	}
+
+	.hero-header p {
+		margin: 0;
+		color: #5b6e62;
+		font-size: 0.96rem;
+	}
+
+	.btn-primary {
+		display: inline-flex;
+		align-items: center;
+		gap: 8px;
+		padding: 12px 20px;
+		border: none;
+		border-radius: 12px;
+		background: #25663b;
+		color: #ffffff;
+		font-weight: 700;
+		font-size: 0.92rem;
+		cursor: pointer;
+		box-shadow: 0 4px 14px rgba(37, 102, 59, 0.25);
+		transition: all 180ms ease;
+	}
+
+	.btn-primary:hover {
+		background: #1c522e;
+		transform: translateY(-1px);
+	}
+
+	.icon {
+		width: 18px;
+		height: 18px;
+	}
+
+	.card {
+		padding: 28px;
+		border: 1px solid #dce5dc;
+		border-radius: 20px;
+		background: #ffffff;
+		box-shadow: 0 10px 30px rgba(23, 61, 41, 0.04);
+		margin-bottom: 24px;
+	}
+
+	.active-farm-card {
+		background: linear-gradient(135deg, #ffffff 0%, #f6faf5 100%);
+		border-color: #cde0ca;
+	}
+
+	.farm-header-row {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		flex-wrap: wrap;
+		gap: 16px;
+		padding-bottom: 20px;
+		border-bottom: 1px solid #e2ebe0;
+	}
+
+	.farm-title {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		flex-wrap: wrap;
+	}
+
+	.crop-badge {
+		padding: 6px 12px;
+		border-radius: 8px;
+		background: #e4f2e1;
+		color: #245b38;
+		font-size: 0.82rem;
+		font-weight: 800;
+	}
+
+	.farm-title h2 {
+		margin: 0;
+		font-size: 1.5rem;
+		color: #163d28;
+	}
+
+	.stage-pill {
+		padding: 4px 10px;
+		border-radius: 999px;
+		font-size: 0.76rem;
+		font-weight: 750;
+	}
+
+	.stage-vegetative { background: #e0f2fe; color: #0369a1; }
+	.stage-reproductive { background: #fef3c7; color: #b45309; }
+	.stage-harvest { background: #dcfce7; color: #15803d; }
+	.stage-seedling { background: #f3e8ff; color: #6b21a8; }
+	.stage-post { background: #f3f4f6; color: #4b5563; }
+
+	.farm-details-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+		gap: 16px;
+		margin-top: 20px;
+	}
+
+	.detail-box {
+		padding: 16px;
+		border-radius: 14px;
+		background: #ffffff;
+		border: 1px solid #e6eee4;
+	}
+
+	.detail-box small {
+		display: block;
+		font-size: 0.74rem;
+		color: #738779;
+		margin-bottom: 4px;
+	}
+
+	.detail-box strong {
+		font-size: 1.05rem;
+		color: #173d29;
+	}
+
+	.detail-box strong.highlight {
+		color: #25663b;
+	}
+
+	.farm-notes {
+		margin-top: 20px;
+		padding: 16px;
+		border-radius: 12px;
+		background: #f0f7ef;
+		font-size: 0.9rem;
+		color: #354e3e;
+	}
+
+	.two-col-grid {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: 24px;
+	}
+
+	@media (max-width: 840px) {
+		.two-col-grid {
+			grid-template-columns: 1fr;
+		}
+	}
+
+	.card-header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		margin-bottom: 18px;
+	}
+
+	.card-header h3 {
+		margin: 0;
+		font-size: 1.15rem;
+		color: #173d29;
+	}
+
+	.link-more {
+		font-size: 0.85rem;
+		font-weight: 700;
+		color: #25663b;
+		text-decoration: none;
+	}
+
+	.quick-task-list {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+	}
+
+	.task-item {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		padding: 12px 14px;
+		border-radius: 10px;
+		background: #f8faf8;
+		border: 1px solid #e8eee7;
+		margin-bottom: 8px;
+	}
+
+	.task-info {
 		display: flex;
 		align-items: center;
 		gap: 10px;
 	}
 
-	.eyebrow span {
-		width: 8px;
-		height: 8px;
-		border-radius: 999px;
-		background: #64a75f;
-		box-shadow: 0 0 0 5px #dcebd9;
+	.cat-tag {
+		font-size: 0.72rem;
+		padding: 2px 6px;
+		border-radius: 4px;
+		background: #e2ece0;
+		color: #2d5a3c;
+		font-weight: 700;
 	}
 
-	h1 {
-		margin: 22px 0 24px;
-		font-size: clamp(2.9rem, 7vw, 5.8rem);
-		line-height: 1.02;
-		letter-spacing: -0.06em;
-		font-weight: 730;
-	}
-
-	h1 strong {
-		color: #36764b;
-		font-weight: inherit;
-	}
-
-	.hero > p {
-		max-width: 650px;
-		margin: 0;
-		font-size: clamp(1rem, 2vw, 1.18rem);
-		line-height: 1.85;
-		color: #5e6962;
-	}
-
-	.flow {
-		padding: 48px;
-		border: 1px solid #dbe3da;
-		border-radius: 28px;
-		background: rgba(255, 255, 255, 0.76);
-		box-shadow: 0 24px 60px rgba(34, 64, 42, 0.08);
-	}
-
-	.section-heading {
-		display: flex;
-		align-items: end;
-		justify-content: space-between;
-		gap: 20px;
-		padding-bottom: 30px;
-		border-bottom: 1px solid #dfe6de;
-	}
-
-	.section-heading h2 {
-		margin: 0;
-		font-size: clamp(1.7rem, 4vw, 2.5rem);
-		letter-spacing: -0.04em;
-	}
-
-	.steps {
-		display: grid;
-		grid-template-columns: repeat(4, 1fr);
-	}
-
-	.steps article {
-		min-height: 240px;
-		padding: 32px 24px 0;
-		border-left: 1px solid #e5eae4;
-	}
-
-	.steps article:first-child {
-		padding-left: 0;
-		border-left: 0;
-	}
-
-	.steps article:last-child {
-		padding-right: 0;
-	}
-
-	.steps span {
-		display: inline-grid;
-		place-items: center;
-		width: 38px;
-		height: 38px;
-		border-radius: 50%;
-		background: #e4f0e1;
-		font-size: 0.78rem;
+	.followup-tag {
+		font-size: 0.7rem;
+		color: #dc2626;
 		font-weight: 800;
-		color: #36764b;
 	}
 
-	.steps h3 {
-		margin: 40px 0 12px;
-		font-size: 1.04rem;
-		letter-spacing: -0.025em;
+	.status-badge {
+		font-size: 0.75rem;
+		font-weight: 700;
+		padding: 3px 8px;
+		border-radius: 6px;
 	}
 
-	.steps p {
-		margin: 0;
-		font-size: 0.9rem;
-		line-height: 1.7;
-		color: #657068;
+	.status-badge.completed { background: #dcfce7; color: #166534; }
+	.status-badge.issue { background: #fee2e2; color: #991b1b; }
+	.status-badge.pending { background: #fef3c7; color: #92400e; }
+
+	.weather-card {
+		background: #153825;
+		color: #ffffff;
+		border-color: #1e4d34;
 	}
 
-	.systems {
+	.weather-eyebrow {
+		font-size: 0.68rem;
+		font-weight: 800;
+		letter-spacing: 0.14em;
+		color: #8ed697;
+	}
+
+	.weather-card h3 {
+		color: #ffffff;
+	}
+
+	.weather-content {
+		display: flex;
+		flex-direction: column;
+		gap: 18px;
+	}
+
+	.weather-temp strong {
+		font-size: 2.8rem;
+		line-height: 1;
+	}
+
+	.weather-temp span {
+		display: block;
+		margin-top: 6px;
+		font-size: 0.95rem;
+		color: #b5d8bc;
+	}
+
+	.weather-metrics {
 		display: grid;
 		grid-template-columns: repeat(3, 1fr);
-		gap: 16px;
-		margin-top: 18px;
-	}
-
-	.systems article {
-		padding: 28px;
-		border: 1px solid #dfe6de;
-		border-radius: 20px;
-		background: #edf3eb;
-	}
-
-	.systems h2 {
-		margin: 20px 0 6px;
-		font-size: 1.45rem;
-		letter-spacing: -0.035em;
-	}
-
-	.systems span {
-		font-size: 0.85rem;
-		color: #6a756d;
-	}
-
-	.database {
-		display: grid;
-		grid-template-columns: minmax(220px, 0.8fr) minmax(360px, 1.2fr);
-		gap: 64px;
-		align-items: start;
-		margin-top: 18px;
-		padding: 48px;
-		border-radius: 28px;
-		background: #173d29;
-		color: #f5faf5;
-	}
-
-	.database-label {
-		margin: 0;
-		font-size: 0.72rem;
-		font-weight: 750;
-		letter-spacing: 0.16em;
-		color: #9bcda2;
-	}
-
-	.database h2 {
-		margin: 18px 0 10px;
-		font-size: clamp(2rem, 4vw, 3rem);
-		letter-spacing: -0.05em;
-	}
-
-	.database-description {
-		margin: 0;
-		line-height: 1.7;
-		color: #bad0c0;
-	}
-
-	.connection-state {
-		display: flex;
-		flex-direction: column;
 		gap: 10px;
-		padding: 24px;
-		border: 1px solid rgba(255, 255, 255, 0.14);
-		border-radius: 18px;
-		background: rgba(255, 255, 255, 0.06);
 	}
 
-	.connection-state strong {
-		font-size: 1rem;
+	.weather-metrics div {
+		padding: 12px;
+		border-radius: 10px;
+		background: rgba(255, 255, 255, 0.08);
 	}
 
-	.connection-state span {
-		font-size: 0.88rem;
-		line-height: 1.6;
-		color: #c7d8cc;
+	.weather-metrics small {
+		display: block;
+		font-size: 0.7rem;
+		color: #9cbca4;
 	}
 
-	.connection-state code {
-		padding: 2px 6px;
-		border-radius: 5px;
-		background: rgba(255, 255, 255, 0.1);
+	.weather-metrics strong {
+		font-size: 1.05rem;
 	}
 
-	.connection-state.error {
-		border-color: rgba(255, 152, 136, 0.5);
-	}
-
-	.weather-summary {
+	.farms-grid {
 		display: grid;
-		grid-template-columns: minmax(140px, 0.8fr) minmax(220px, 1.2fr);
-		gap: 28px;
-		padding: 24px;
-		border: 1px solid rgba(255, 255, 255, 0.14);
-		border-radius: 18px;
-		background: rgba(255, 255, 255, 0.06);
+		grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+		gap: 16px;
 	}
 
-	.weather-primary {
+	.farm-mini-card {
+		padding: 18px;
+		border-radius: 14px;
+		border: 1px solid #e1ebe0;
+		background: #fbfdfb;
+		cursor: pointer;
+		transition: all 150ms ease;
+	}
+
+	.farm-mini-card:hover {
+		border-color: #25663b;
+		transform: translateY(-2px);
+	}
+
+	.farm-mini-card.selected {
+		border-color: #25663b;
+		background: #edf7eb;
+		box-shadow: 0 0 0 2px #25663b;
+	}
+
+	.mini-header {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		margin-bottom: 8px;
+	}
+
+	.mini-crop {
+		font-size: 0.75rem;
+		font-weight: 800;
+		padding: 2px 6px;
+		border-radius: 4px;
+		background: #25663b;
+		color: #fff;
+	}
+
+	.mini-header h4 {
+		margin: 0;
+		font-size: 0.98rem;
+		color: #173d29;
+	}
+
+	.mini-region {
+		margin: 0 0 12px;
+		font-size: 0.8rem;
+		color: #6a7f72;
+	}
+
+	.mini-footer {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		font-size: 0.78rem;
+		color: #485c50;
+	}
+
+	/* Modal Styles */
+	.modal-backdrop {
+		position: fixed;
+		inset: 0;
+		z-index: 100;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		padding: 20px;
+		background: rgba(12, 33, 22, 0.6);
+		backdrop-filter: blur(4px);
+	}
+
+	.modal-card {
+		width: 100%;
+		max-width: 540px;
+		max-height: 90vh;
+		overflow-y: auto;
+		background: #ffffff;
+		border-radius: 20px;
+		padding: 28px;
+		box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2);
+	}
+
+	.modal-header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		margin-bottom: 20px;
+	}
+
+	.modal-header h3 {
+		margin: 0;
+		font-size: 1.25rem;
+		color: #173d29;
+	}
+
+	.btn-close {
+		border: none;
+		background: none;
+		font-size: 1.5rem;
+		cursor: pointer;
+		color: #888;
+	}
+
+	.modal-form {
 		display: flex;
 		flex-direction: column;
-		gap: 8px;
+		gap: 16px;
 	}
 
-	.weather-primary span {
+	.form-group {
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+	}
+
+	.form-row {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: 14px;
+	}
+
+	label {
 		font-size: 0.82rem;
 		font-weight: 700;
-		color: #9bcda2;
+		color: #2b4534;
 	}
 
-	.weather-primary strong {
-		font-size: clamp(2.5rem, 6vw, 4rem);
-		line-height: 1;
-		letter-spacing: -0.06em;
+	input, select, textarea {
+		padding: 10px 12px;
+		border: 1px solid #d2ded0;
+		border-radius: 10px;
+		font-size: 0.9rem;
+		font-family: inherit;
 	}
 
-	.weather-primary small {
-		font-size: 0.76rem;
-		color: #bad0c0;
+	input:focus, select:focus, textarea:focus {
+		outline: none;
+		border-color: #25663b;
+		box-shadow: 0 0 0 3px rgba(37, 102, 59, 0.15);
 	}
 
-	.weather-summary dl {
-		display: grid;
-		grid-template-columns: repeat(3, 1fr);
-		gap: 10px;
-		margin: 0;
+	.modal-actions {
+		display: flex;
+		justify-content: flex-end;
+		gap: 12px;
+		margin-top: 10px;
 	}
 
-	.weather-summary dl div {
-		padding: 18px 12px;
-		border-radius: 14px;
-		background: rgba(255, 255, 255, 0.07);
-	}
-
-	.weather-summary dt {
-		margin-bottom: 12px;
-		font-size: 0.72rem;
-		color: #9fb7a6;
-	}
-
-	.weather-summary dd {
-		margin: 0;
-		font-size: 1rem;
-		font-weight: 700;
-	}
-
-	@media (max-width: 800px) {
-		main {
-			width: min(100% - 28px, 680px);
-			padding-top: 34px;
-		}
-
-		.hero,
-		.flow,
-		.systems,
-		.database {
-			scroll-margin-top: 82px;
-		}
-
-		.hero {
-			padding: 36px 6px 64px;
-		}
-
-		.flow {
-			padding: 30px 24px;
-			border-radius: 22px;
-		}
-
-		.section-heading {
-			align-items: start;
-			flex-direction: column;
-		}
-
-		.steps {
-			grid-template-columns: 1fr;
-		}
-
-		.steps article,
-		.steps article:first-child,
-		.steps article:last-child {
-			min-height: auto;
-			padding: 24px 0;
-			border-left: 0;
-			border-top: 1px solid #e5eae4;
-		}
-
-		.steps article:first-child {
-			border-top: 0;
-		}
-
-		.steps h3 {
-			margin-top: 20px;
-		}
-
-		.systems {
-			grid-template-columns: 1fr;
-		}
-
-		.database {
-			grid-template-columns: 1fr;
-			gap: 30px;
-			padding: 32px 24px;
-			border-radius: 22px;
-		}
-
-		.weather-summary {
-			grid-template-columns: 1fr;
-		}
+	.btn-secondary {
+		padding: 10px 18px;
+		border: 1px solid #d2ded0;
+		border-radius: 10px;
+		background: #f4f8f4;
+		color: #3b5243;
+		font-weight: 600;
+		cursor: pointer;
 	}
 </style>

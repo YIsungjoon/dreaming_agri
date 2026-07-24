@@ -1,64 +1,48 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
+	import { page } from '$app/state';
+	import { farmStore } from '$lib/farmStore.svelte';
 
 	const navigation = [
 		{
 			id: 'overview',
-			label: '개요',
-			path: 'M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z'
+			label: '농장 현황 & 등록',
+			href: '/',
+			path: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6'
 		},
 		{
-			id: 'flow',
-			label: '운영 흐름',
-			path: 'M5 6h9M11 3l3 3-3 3M19 18h-9M13 15l-3 3 3 3M5 6v5a3 3 0 0 0 3 3h8a3 3 0 0 1 3 3v1'
+			id: 'tasks',
+			label: '오늘 & 주간 작업',
+			href: '/tasks',
+			path: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01'
 		},
 		{
-			id: 'systems',
-			label: '시스템',
-			path: 'M12 3v5M12 16v5M4.2 7.5l4.3 2.5M15.5 14l4.3 2.5M4.2 16.5 8.5 14M15.5 10l4.3-2.5M12 8l3.5 2v4L12 16l-3.5-2v-4z'
+			id: 'ai',
+			label: 'AI 질의응답 & 요약',
+			href: '/ai',
+			path: 'M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z'
 		},
 		{
-			id: 'weather',
-			label: '농장 날씨',
-			path: 'M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6 7 7M17 17l1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4M16 12a4 4 0 1 1-8 0 4 4 0 0 1 8 0'
+			id: 'admin',
+			label: '농가 통합 관리자',
+			href: '/admin',
+			path: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z'
 		}
 	];
 
 	let mobileOpen = $state(false);
-	let activeSection = $state('overview');
 
-	$effect(() => {
-		if (!browser) return;
-
-		const sections = navigation
-			.map((item) => document.getElementById(item.id))
-			.filter((section): section is HTMLElement => section !== null);
-		const observer = new IntersectionObserver(
-			(entries) => {
-				const visibleEntry = entries
-					.filter((entry) => entry.isIntersecting)
-					.sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
-
-				if (visibleEntry) activeSection = visibleEntry.target.id;
-			},
-			{ rootMargin: '-18% 0px -62% 0px', threshold: [0, 0.15, 0.4] }
-		);
-
-		for (const section of sections) observer.observe(section);
-
-		return () => observer.disconnect();
-	});
-
-	function selectSection(id: string) {
-		activeSection = id;
-		mobileOpen = false;
+	function isPathActive(href: string): boolean {
+		const pathname = page.url.pathname;
+		if (href === '/') return pathname === '/';
+		return pathname.startsWith(href);
 	}
 </script>
 
 <svelte:window onkeydown={(event) => event.key === 'Escape' && (mobileOpen = false)} />
 
 <header class="mobile-bar">
-	<a class="mobile-brand" href="#overview" onclick={() => selectSection('overview')}>
+	<a class="mobile-brand" href="/">
 		<span class="brand-mark" aria-hidden="true"><i></i></span>
 		<strong>Dreaming Agri</strong>
 	</a>
@@ -67,7 +51,6 @@
 		class="menu-button"
 		aria-label={mobileOpen ? '메뉴 닫기' : '메뉴 열기'}
 		aria-expanded={mobileOpen}
-		aria-controls="app-sidebar"
 		onclick={() => (mobileOpen = !mobileOpen)}
 	>
 		<span></span><span></span><span></span>
@@ -84,36 +67,49 @@
 ></button>
 
 <aside id="app-sidebar" class:open={mobileOpen} aria-label="주요 탐색">
-	<a class="brand" href="#overview" onclick={() => selectSection('overview')}>
+	<a class="brand" href="/">
 		<span class="brand-mark" aria-hidden="true"><i></i></span>
 		<span>
 			<strong>Dreaming Agri</strong>
-			<small>Farm operations</small>
+			<small>Farm Operations MVP</small>
 		</span>
 	</a>
 
+	<!-- Farm Switcher Dropdown -->
 	<div class="farm-context">
-		<span class="farm-icon" aria-hidden="true">김</span>
-		<span>
-			<small>현재 농장</small>
-			<strong>김제 가상농장</strong>
-		</span>
-		<i aria-hidden="true"></i>
+		<label for="farm-select" class="farm-label">
+			<span class="farm-icon">{farmStore.currentFarm.crop.slice(0, 1)}</span>
+			<span class="farm-info">
+				<small>현재 관리 농장</small>
+				<strong>{farmStore.currentFarm.name}</strong>
+			</span>
+		</label>
+		<select
+			id="farm-select"
+			class="farm-select-input"
+			value={farmStore.selectedFarmId}
+			onchange={(e) => farmStore.selectFarm(e.currentTarget.value)}
+		>
+			{#each farmStore.farms as farm}
+				<option value={farm.id}>
+					{farm.name} ({farm.crop} / {farm.growth_stage})
+				</option>
+			{/each}
+		</select>
 	</div>
 
-	<nav aria-label="페이지 섹션">
+	<nav aria-label="메인 메뉴">
 		<p>MENU</p>
 		<ul>
 			{#each navigation as item}
 				<li>
 					<a
-						href={`#${item.id}`}
-						class:active={activeSection === item.id}
-						aria-current={activeSection === item.id ? 'location' : undefined}
-						onclick={() => selectSection(item.id)}
+						href={item.href}
+						class:active={isPathActive(item.href)}
+						onclick={() => (mobileOpen = false)}
 					>
 						<svg viewBox="0 0 24 24" aria-hidden="true">
-							<path d={item.path}></path>
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d={item.path}></path>
 						</svg>
 						<span>{item.label}</span>
 					</a>
@@ -125,9 +121,10 @@
 	<div class="sidebar-footer">
 		<div class="status-row">
 			<span aria-hidden="true"></span>
-			<strong>날씨 자동 수집</strong>
+			<strong>Supabase & Weather Live</strong>
 		</div>
-		<p>매일 00 · 06 · 12 · 18시</p>
+		<p>작물: {farmStore.currentFarm.crop} ({farmStore.currentFarm.variety})</p>
+		<p>생육단계: <span class="stage-tag">{farmStore.currentFarm.growth_stage}</span></p>
 	</div>
 </aside>
 
@@ -207,6 +204,7 @@
 	.mobile-brand strong {
 		font-size: 0.98rem;
 		letter-spacing: -0.02em;
+		color: #f4f8f4;
 	}
 
 	.brand small {
@@ -217,58 +215,68 @@
 	}
 
 	.farm-context {
-		display: grid;
-		grid-template-columns: 38px 1fr 8px;
-		gap: 11px;
-		align-items: center;
-		margin-top: 36px;
-		padding: 13px;
-		border: 1px solid rgba(255, 255, 255, 0.1);
+		position: relative;
+		margin-top: 28px;
+		padding: 12px;
+		border: 1px solid rgba(255, 255, 255, 0.12);
 		border-radius: 16px;
-		background: rgba(255, 255, 255, 0.055);
+		background: rgba(255, 255, 255, 0.06);
+	}
+
+	.farm-label {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		cursor: pointer;
 	}
 
 	.farm-icon {
 		display: grid;
 		width: 38px;
 		height: 38px;
+		flex: 0 0 auto;
 		place-items: center;
 		border-radius: 12px;
 		background: #2f6842;
-		font-size: 0.76rem;
+		font-size: 0.9rem;
 		font-weight: 800;
 		color: #dff0d9;
 	}
 
-	.farm-context > span:nth-child(2) {
+	.farm-info {
 		display: flex;
 		min-width: 0;
 		flex-direction: column;
-		gap: 3px;
+		gap: 2px;
 	}
 
-	.farm-context small {
-		font-size: 0.66rem;
+	.farm-info small {
+		font-size: 0.65rem;
 		color: #8ca493;
 	}
 
-	.farm-context strong {
+	.farm-info strong {
 		overflow: hidden;
-		font-size: 0.82rem;
+		font-size: 0.84rem;
 		text-overflow: ellipsis;
 		white-space: nowrap;
+		color: #ffffff;
 	}
 
-	.farm-context i {
-		width: 7px;
-		height: 7px;
-		border-radius: 50%;
-		background: #7dc879;
-		box-shadow: 0 0 0 4px rgba(125, 200, 121, 0.12);
+	.farm-select-input {
+		margin-top: 8px;
+		width: 100%;
+		padding: 6px 10px;
+		border: 1px solid rgba(255, 255, 255, 0.2);
+		border-radius: 8px;
+		background: #1a422d;
+		color: #e4f0e1;
+		font-size: 0.78rem;
+		cursor: pointer;
 	}
 
 	nav {
-		margin-top: 34px;
+		margin-top: 28px;
 	}
 
 	nav > p {
@@ -286,7 +294,7 @@
 	}
 
 	nav li + li {
-		margin-top: 4px;
+		margin-top: 6px;
 	}
 
 	nav a {
@@ -295,36 +303,30 @@
 		gap: 12px;
 		padding: 12px 14px;
 		border-radius: 12px;
-		font-size: 0.86rem;
+		font-size: 0.88rem;
 		font-weight: 650;
 		color: #aebfb3;
 		text-decoration: none;
-		transition:
-			background 150ms ease,
-			color 150ms ease,
-			transform 150ms ease;
+		transition: all 150ms ease;
 	}
 
 	nav a:hover {
-		background: rgba(255, 255, 255, 0.055);
+		background: rgba(255, 255, 255, 0.08);
 		color: #f4f8f4;
-		transform: translateX(2px);
 	}
 
 	nav a.active {
 		background: #dff0d9;
-		color: #235c38;
+		color: #1c4d2e;
+		font-weight: 750;
 	}
 
 	nav svg {
-		width: 19px;
-		height: 19px;
+		width: 20px;
+		height: 20px;
 		flex: 0 0 auto;
 		fill: none;
 		stroke: currentColor;
-		stroke-width: 1.7;
-		stroke-linecap: round;
-		stroke-linejoin: round;
 	}
 
 	.sidebar-footer {
@@ -352,9 +354,18 @@
 	}
 
 	.sidebar-footer p {
-		margin: 7px 0 0 16px;
-		font-size: 0.7rem;
-		color: #82998a;
+		margin: 6px 0 0 0;
+		font-size: 0.72rem;
+		color: #9cb3a4;
+	}
+
+	.stage-tag {
+		display: inline-block;
+		padding: 1px 6px;
+		border-radius: 4px;
+		background: rgba(125, 200, 121, 0.2);
+		color: #a5e2a2;
+		font-weight: 700;
 	}
 
 	.mobile-bar,
@@ -364,7 +375,7 @@
 
 	@media (max-width: 960px) {
 		aside {
-			width: min(82vw, 312px);
+			width: min(84vw, 320px);
 			transform: translateX(-105%);
 			transition: transform 220ms ease;
 		}
@@ -383,7 +394,7 @@
 			align-items: center;
 			justify-content: space-between;
 			border-bottom: 1px solid #dde5dc;
-			background: rgba(244, 247, 242, 0.92);
+			background: rgba(244, 247, 242, 0.94);
 			backdrop-filter: blur(14px);
 		}
 
@@ -433,14 +444,6 @@
 		.backdrop.visible {
 			opacity: 1;
 			pointer-events: auto;
-		}
-	}
-
-	@media (prefers-reduced-motion: reduce) {
-		aside,
-		nav a,
-		.backdrop {
-			transition: none;
 		}
 	}
 </style>
