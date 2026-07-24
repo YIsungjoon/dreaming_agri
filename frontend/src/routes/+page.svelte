@@ -2,9 +2,27 @@
 	import type { PageData } from './$types';
 	import { farmStore } from '$lib/farmStore.svelte';
 	import WeatherPestWidget from '$lib/components/WeatherPestWidget.svelte';
+	import { fetchAgriculturalWeather, type WeatherInfo } from '$lib/services/agriApiService';
 	import type { GrowthStage } from '$lib/types';
 
 	let { data }: { data: PageData } = $props();
+
+	let realTimeWeather = $state<WeatherInfo | null>(null);
+
+	$effect(() => {
+		const region = farmStore.currentFarm.region;
+		fetchAgriculturalWeather(region).then((res) => {
+			realTimeWeather = res;
+		});
+
+		const timer = setInterval(() => {
+			fetchAgriculturalWeather(region).then((res) => {
+				realTimeWeather = res;
+			});
+		}, 3600000);
+
+		return () => clearInterval(timer);
+	});
 
 	// Modal & Form State for Farm Registration
 	let showRegModal = $state(false);
@@ -151,33 +169,36 @@
 		<!-- Weather Information Section -->
 		<section class="card weather-card">
 			<div class="card-header">
-				<span class="weather-eyebrow">VIRTUAL WEATHER</span>
-				<h3>실시간 가상 기상 관측</h3>
+				<span class="weather-eyebrow">REAL-TIME FARM WEATHER</span>
+				<h3>실시간 농가 기상 관측</h3>
+				<span class="region-sub-tag">📍 {farmStore.currentFarm.region}</span>
 			</div>
-			{#if data.weather}
+			{#if realTimeWeather}
 				<div class="weather-content">
 					<div class="weather-temp">
-						<strong>{data.weather.temperature_c}°C</strong>
-						<span>{weatherLabels[data.weather.weather_code] ?? `기상코드 ${data.weather.weather_code}`}</span>
+						<strong>{realTimeWeather.temperature}°C</strong>
+						<span>{realTimeWeather.skyCondition === 'sunny' ? '☀️ 맑음' : '☁️ 구름 많음'}</span>
 					</div>
 					<div class="weather-metrics">
 						<div>
-							<small>습도</small>
-							<strong>{data.weather.relative_humidity_pct}%</strong>
+							<small>상대습도</small>
+							<strong>{realTimeWeather.humidity}%</strong>
 						</div>
 						<div>
-							<small>강수량</small>
-							<strong>{data.weather.precipitation_mm} mm</strong>
+							<small>강수확률</small>
+							<strong>{realTimeWeather.precipitationProbability}%</strong>
 						</div>
 						<div>
-							<small>풍속</small>
-							<strong>{data.weather.wind_speed_kph} km/h</strong>
+							<small>기상 상태</small>
+							<strong class={realTimeWeather.warningType !== 'none' ? 'warn-text' : 'normal-text'}>
+								{realTimeWeather.warningType !== 'none' ? '주의보 발생' : '정상 관측'}
+							</strong>
 						</div>
 					</div>
 				</div>
 			{:else}
 				<div class="weather-placeholder">
-					<p>기상 수집 시스템이 연동되어 대기 중입니다.</p>
+					<p>해당 농가 지리 실시간 기상을 관측 중입니다...</p>
 				</div>
 			{/if}
 		</section>
@@ -539,6 +560,17 @@
 	.weather-card h3 {
 		color: #ffffff;
 	}
+
+	.region-sub-tag {
+		font-size: 0.76rem;
+		color: #a4e5ac;
+		font-weight: 700;
+		margin-top: 4px;
+		display: block;
+	}
+
+	.warn-text { color: #f97316 !important; }
+	.normal-text { color: #4ade80 !important; }
 
 	.weather-content {
 		display: flex;
